@@ -9,6 +9,8 @@
 // sJTracker.userAlias          // Assign unique ID to identify future user interactions
 // sJTracker.userIdentify       // Identify user with unique ID
 // sJTracker.userNameTag        // Identify user with human readable name tags
+// sJTracker.register           // Add attributes to all proceding tracking events
+// sJTracker.increment          // Increment numerical attribute
 
 var   sJTracker = {}
     , runSJTasks = function() {};
@@ -16,20 +18,20 @@ var   sJTracker = {}
 sJTracker.registerEvent = (function() {
 
   /**
-   * @param {Object} element
+   * @param {Object} $element
    * @param {string} type
    * @param {function(...[*])} handler
    * @param {boolean=} oldSchool
    */
-  var registerEvent = function(element, type, handler, oldSchool) {
-    if (!element) return;
+  var registerEvent = function($element, type, handler, oldSchool) {
+    if (!$element) return;
 
-    if (element.addEventListener && !oldSchool) {
-      element.addEventListener(type, handler, false);
+    if ($element.addEventListener && !oldSchool) {
+      $element.addEventListener(type, handler, false);
     } else {
       var ontype = 'on' + type;
-      var oldHandler = element[ontype]; // can be undefined
-      element[ontype] = makeHandler(element, handler, oldHandler);
+      var oldHandler = $element[ontype]; // can be undefined
+      $element[ontype] = makeHandler($element, handler, oldHandler);
     }
   };
 
@@ -45,11 +47,11 @@ sJTracker.registerEvent = (function() {
   }
 
   /**
-   * @param {Object} element
+   * @param {Object} $element
    * @param {function(...[*])} newHandler
    * @param {function(...[*])} oldHandlers
    */
-  function makeHandler(element, newHandler, oldHandlers) {
+  function makeHandler($element, newHandler, oldHandlers) {
     var handler = function(event) {
         event = event || fixEvent(window.event);
 
@@ -65,7 +67,7 @@ sJTracker.registerEvent = (function() {
 
       if (isFunction(oldHandlers)) oldResult = oldHandlers(event);
 
-      newResult = newHandler.call(element, event);
+      newResult = newHandler.call($element, event);
 
       if ((false === oldResult) || (false === newResult)) ret = false;
 
@@ -98,7 +100,7 @@ sJTracker.registerEvent = (function() {
 })();
 
 /**
- * @param {String} element
+ * @param {String} $element
  */
 sJTracker.getDomQuery = (function() {
   /* document.getElementsBySelector(selector)
@@ -106,7 +108,7 @@ sJTracker.getDomQuery = (function() {
     matching the CSS selector. Selectors can contain element names,
     class names and ids and can be nested. For example:
 
-    elements = document.getElementsBySelector('div#main p a.external')
+    $elements = document.getElementsBySelector('div#main p a.external')
 
     Will return an array of all 'a' elements with 'external' in their
     class attribute that are contained inside 'p' elements that are
@@ -148,15 +150,15 @@ sJTracker.getDomQuery = (function() {
         var   bits = token.split('#')
             , tagName = bits[0]
             , id = bits[1]
-            , element = document.getElementById(id);
+            , $element = document.getElementById(id);
 
-        if (!element || (tagName && element.nodeName.toLowerCase() != tagName)) {
+        if (!$element || (tagName && $element.nodeName.toLowerCase() != tagName)) {
           // element not found or tag with that ID not found, return false
           return [];
         }
 
         // Set currentContext to contain just this element
-        currentContext = new Array(element);
+        currentContext = new Array($element);
         continue; // Skip to next token
       }
       if (token.indexOf('.') > -1) {
@@ -172,15 +174,15 @@ sJTracker.getDomQuery = (function() {
             , foundCount = 0
 
         for (var h = 0; h < currentContext.length; h++) {
-          var elements;
+          var $elements;
 
           if (tagName == '*') {
-            elements = getAllChildren(currentContext[h]);
+            $elements = getAllChildren(currentContext[h]);
           } else {
-            elements = currentContext[h].getElementsByTagName(tagName);
+            $elements = currentContext[h].getElementsByTagName(tagName);
           }
-          for (var j = 0; j < elements.length; j++) {
-            found[foundCount++] = elements[j];
+          for (var j = 0; j < $elements.length; j++) {
+            found[foundCount++] = $elements[j];
           }
         }
 
@@ -202,15 +204,15 @@ sJTracker.getDomQuery = (function() {
             , foundCount = 0;
 
         for (var h = 0; h < currentContext.length; h++) {
-          var elements;
+          var $elements;
 
           if (tagName == '*') {
-            elements = getAllChildren(currentContext[h]);
+            $elements = getAllChildren(currentContext[h]);
           } else {
-            elements = currentContext[h].getElementsByName(tagName);
+            $elements = currentContext[h].getElementsByName(tagName);
           }
-          for (var j = 0; j < elements.length; j++) {
-            found[foundCount++] = elements[j];
+          for (var j = 0; j < $elements.length; j++) {
+            found[foundCount++] = $elements[j];
           }
         }
         currentContext = found;
@@ -231,15 +233,15 @@ sJTracker.getDomQuery = (function() {
             , foundCount = 0;
 
         for (var h = 0; h < currentContext.length; h++) {
-          var elements;
+          var $elements;
 
           if (tagName == '*') {
-            elements = getAllChildren(currentContext[h]);
+            $elements = getAllChildren(currentContext[h]);
           } else {
-            elements = currentContext[h].getElementsByTagName(tagName);
+            $elements = currentContext[h].getElementsByTagName(tagName);
           }
-          for (var j = 0; j < elements.length; j++) {
-            found[foundCount++] = elements[j];
+          for (var j = 0; j < $elements.length; j++) {
+            found[foundCount++] = $elements[j];
           }
         }
         currentContext = new Array;
@@ -299,10 +301,10 @@ sJTracker.getDomQuery = (function() {
           , foundCount = 0;
 
       for (var h = 0; h < currentContext.length; h++) {
-        var elements = currentContext[h].getElementsByTagName(tagName);
+        var $elements = currentContext[h].getElementsByTagName(tagName);
 
-        for (var j = 0; j < elements.length; j++) {
-          found[foundCount++] = elements[j];
+        for (var j = 0; j < $elements.length; j++) {
+          found[foundCount++] = $elements[j];
         }
       }
       currentContext = found;
@@ -323,8 +325,9 @@ sJTracker.getSeconds = function(time) {
 };
 
 /**
- * @param {String} element
+ * @param {String} $element
  * @param {String} trackingNote
+ * @param {Object} trackingObject
  */
 sJTracker.trackInput = function($element, trackingNote, trackingObject) {
   $($element).on("change", function() {
@@ -353,7 +356,7 @@ sJTracker.trackInput = function($element, trackingNote, trackingObject) {
 };
 
 /**
- * @param {String} element
+ * @param {String} name
  * @param {Object} data
  * @param {function(...[*])} callback
  */
@@ -364,23 +367,23 @@ sJTracker.track = function(name, data, callback) {
 };
 
 /**
- * @param {String} element
+ * @param {String} $element
  * @param {String} trackingNote
  * @param {Object} data
  */
-sJTracker.trackLinks = function(element, trackingNote, data) {
-  mixpanel.track_links(element, trackingNote, data);
+sJTracker.trackLinks = function($element, trackingNote, data) {
+  mixpanel.track_links($element, trackingNote, data);
 
   if (data) sJTracker.registerUserInfo(data);
 };
 
 /**
- * @param {String} element
+ * @param {String} $element
  * @param {String} trackingNote
  * @param {Object} data
  */
-sJTracker.trackClicks = function(element, trackingNote, data) {
-  $(element).on("click", function() {
+sJTracker.trackClicks = function($element, trackingNote, data) {
+  $($element).on("click", function() {
     mixpanel.track(trackingNote, data);
 
     if (data) sJTracker.registerUserInfo(data);
@@ -390,21 +393,22 @@ sJTracker.trackClicks = function(element, trackingNote, data) {
 
 
 /**
- * @param {String} element
+ * @param {String} $element
  * @param {String} trackingNote
  * @param {Object} data
  */
-sJTracker.trackForms = function(element, trackingNote, data) {
+sJTracker.trackForms = function($element, trackingNote, data) {
   if (data) {
-    mixpanel.track_forms(element, trackingNote, data);
+    mixpanel.track_forms($element, trackingNote, data);
     sJTracker.registerUserInfo(data);
   } else {
-    mixpanel.track_forms(element, trackingNote);
+    mixpanel.track_forms($element, trackingNote);
   }
 };
 
 /**
  * @param {Object} data
+ * @param {boolean=} noParse
  */
 sJTracker.registerUserInfo = function(data, noParse) {
   var   newObject = {}
